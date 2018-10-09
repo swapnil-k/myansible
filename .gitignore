@@ -1,2 +1,2 @@
 ansibleserver/id_rsa*
-ansibleclient/id_rsa.pub
+ansibleclient/id_rsa*
