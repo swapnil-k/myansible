@@ -1,0 +1,27 @@
+version: '2'
+services:
+  ansibleclient1:
+    container_name: ansibleclient1
+    image: swapnilkhedekar/ansibleclient:1.0
+    hostname: ansibleclient1
+    tty: true
+
+  ansibleclient2:
+    container_name: ansibleclient2
+    image: swapnilkhedekar/ansibleclient:1.0
+    hostname: ansibleclient2
+    tty: true
+
+  ansibleserver:
+    container_name: ansible
+    image: swapnilkhedekar/ansibleserver:2.2
+    hostname: ansible
+    links:
+    - ansibleclient1
+    - ansibleclient2
+    tty: true
+
+#networks:
+#  back:
+#    driver:
+#    - "bridge"
