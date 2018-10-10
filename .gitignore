@@ -1,2 +1,3 @@
-ansibleserver/id_rsa*
-ansibleclient/id_rsa*
+.DS_Store
+docker_setup/ansibleclient/id_rsa.pub
+docker_setup/ansibleserver/id_rsa
