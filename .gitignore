@@ -1,3 +1,4 @@
 .DS_Store
 docker_setup/ansibleclient/id_rsa.pub
 docker_setup/ansibleserver/id_rsa
+.gitignore
