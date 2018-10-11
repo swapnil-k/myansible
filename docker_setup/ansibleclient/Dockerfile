@@ -18,6 +18,7 @@ RUN apt-get update -qq && \
 RUN apt-get install -y sudo vim less telnet net-tools curl inetutils-ping openssh-server ufw
 RUN apt-get install -y python python-pip
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && apt-get autoremove -y
+RUN pip install --upgrade pip
 
 # configure ssh and password
 RUN mkdir /var/run/sshd
