@@ -1,5 +1,6 @@
 ---
-- hosts: ansibleclient2
+- hosts: ansibleclient
+  gather_facts: no
   become: yes
   tasks:
   - name: Ensure sysadmin group
@@ -7,12 +8,12 @@
 
   - name: Add users
     user: 
-      name=sysadmin
-      system=yes
-      shell=/bin/bash
-      append=yes
-      groups=sysadmin
-      password="$6$rounds=656000$iO7Q9L6/w8dUUQVf$rmtnxrQ15TGAfG5ODxQ/WGyEpTwk.vD1W.UtedmOlo9YNkrIwapYMjmKmteEnUJmRYucgUVxXUQy7gtenpLmw0"
+      name: ysadmin
+      system: yes
+      shell: /bin/bash
+      append: yes
+      groups: sysadmin
+      password: "$6$rounds=656000$iO7Q9L6/w8dUUQVf$rmtnxrQ15TGAfG5ODxQ/WGyEpTwk.vD1W.UtedmOlo9YNkrIwapYMjmKmteEnUJmRYucgUVxXUQy7gtenpLmw0"
 
   - name: Add .ssh directories
     file:
@@ -29,9 +30,15 @@
       line: '%sysadmin ALL=(ALL) NOPASSWD: ALL'
       validate: 'visudo -cf %s'
 
-#  - name: Disallow root SSH access
-#    lineinfile: dest=/etc/ssh/sshd_config
-#      regexp="^PermitRootLogin"
-#      line="PermitRootLogin no"
-#      state=present
-#    notify: Restart ssh
+  - name: Disallow root SSH access
+    lineinfile: 
+      dest: /etc/ssh/sshd_config
+      regexp: "^PermitRootLogin"
+      line: "PermitRootLogin no"
+      state: present
+      validate: '/usr/sbin/sshd -T -f %s'
+    notify: restart ssh
+
+  handlers:
+    - name: restart ssh
+      service: name=ssh state=restarted
