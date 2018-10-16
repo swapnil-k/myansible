@@ -1,5 +1,5 @@
 ---
-- hosts: ansibleclient
+- hosts: "{{ target }}"
   gather_facts: no
   become: yes
   tasks:
@@ -8,20 +8,23 @@
 
   - name: Add users
     user: 
-      name: ysadmin
+      name: sysadmin
       system: yes
       shell: /bin/bash
       append: yes
       groups: sysadmin
       password: "$6$rounds=656000$iO7Q9L6/w8dUUQVf$rmtnxrQ15TGAfG5ODxQ/WGyEpTwk.vD1W.UtedmOlo9YNkrIwapYMjmKmteEnUJmRYucgUVxXUQy7gtenpLmw0"
 
-  - name: Add .ssh directories
+  - name: Copy .ssh directories from root to sysadmin home
+    command: cp -R /root/.ssh /home/sysadmin/
+
+  - name: Change onwership to sysadmin 
     file:
       path: /home/sysadmin/.ssh
       state: directory
-      mode: 0700
       owner: sysadmin
       group: sysadmin
+      mode: 0700
 
   - name: Add 'sysadmin' group to sudoers to have passwordless sudo
     lineinfile:

@@ -1,0 +1,5 @@
+localhost
+
+[ansibleclient]
+ansibleclient1 ansible_host=ansibleclient1
+ansibleclient2 ansible_host=ansibleclient2
