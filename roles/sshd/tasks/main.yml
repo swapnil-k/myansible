@@ -1,0 +1,40 @@
+---
+- block:
+  - name: if PermitRootLogin is yes, then change to prohibit-password
+    replace: dest=/etc/ssh/sshd_config regexp="^PermitRootLogin yes" replace="PermitRootLogin prohibit-password" backup=yes
+    notify: restart sshd
+
+  - name: if X11Forwarding is yes, then change to no
+    replace: dest=/etc/ssh/sshd_config regexp="^X11Forwarding yes" replace="X11Forwarding no" backup=yes
+    notify: restart sshd
+
+  - name: Disable motd 
+    lineinfile: 
+      path: /etc/default/motd-news
+      regexp: '^ENABLED=0'
+      line: '^ENABLED=1'
+    ignore_errors: true
+
+  - name: Ensure update-motd is disabled and stopped
+    service: name=motd-news enabled=no state=stopped
+    ignore_errors: true
+    changed_when: false
+
+  - name: Delete update-motd directory
+    file:
+      path: /etc/update-motd.d
+      state: absent
+    ignore_errors: true
+
+  - name: Disable other banner configuration
+    copy: src="{{ role_path }}/files/home/ubuntu/.hushlogin" dest=/home/{{ ansible_user }}/.hushlogin owner={{ ansible_user }} group={{ ansible_user }} mode=0644
+
+  - name: Add sshd banner file
+    template: src=etc/ssh/banner.j2 dest=/etc/ssh/banner owner=root group=root mode=0644
+    notify: restart sshd
+  
+  - name: Add banner configuration
+    lineinfile: dest=/etc/ssh/sshd_config line="Banner /etc/ssh/banner"
+    notify: restart sshd
+
+  tags: sshd

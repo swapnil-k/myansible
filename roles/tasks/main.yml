@@ -1,0 +1,18 @@
+---
+- block:
+
+  - name: install logrotate 
+    apt: name=logrotate state=present
+
+  - name: update /etc/logrotate.conf
+    copy: src=etc/logrotate.conf dest=/etc/logrotate.conf owner=root group=root mode=0644
+
+  - name: remove /etc/cron.daily/logrotate
+    file: path=/etc/cron.daily/logrotate state=absent
+
+  - name: update /opt/logrotate.sh
+    copy: src=opt/logrotate.sh dest=/opt/logrotate.sh owner=root group=root mode=0755
+
+  - name: create /opt/log
+    file: path=/opt/log owner=root group=root mode=0777 state=directory
+    changed_when: false

@@ -1,0 +1,235 @@
+---
+# file: roles/common/tasks/common.yml
+
+- block:
+
+  - name: Remove apt lock file
+    file: path=/var/lib/dpkg/lock state=absent
+    changed_when: False
+
+  - name: Create sysadmin group
+    group: name=sysadmin state=present
+
+  - name: Create sysadmin user
+    user:
+      name: sysadmin
+      groups:
+        - sysadmin
+        - sudo
+        - adm
+      shell: /bin/bash
+      system: no
+      createhome: yes
+      home: /home/sysadmin
+      state: present
+
+  - name: Setup .ssh directory
+    file: path=/home/sysadmin/.ssh owner=sysadmin group=sysadmin mode=0700 state=directory
+
+  - name: Install sysadmin authorized_keys file 
+    copy: src=home/sysadmin/dir.ssh/authorized_keys.sysadmin.{{ env }} dest=/home/sysadmin/.ssh/authorized_keys owner=sysadmin group=sysadmin mode=0600
+
+  - name: Setup ansible facts
+    file: path=/etc/ansible/facts.d owner=root group=root mode=0755 state=directory
+
+  - name: Set LC_ALL
+    lineinfile:
+      dest: /etc/environment
+      state: present
+      regexp: '^LC_ALL'
+      line: 'LC_ALL=en_US.UTF-8'
+
+  - name: Set LANG
+    lineinfile:
+      dest: /etc/environment
+      state: present
+      regexp: '^LANG'
+      line: 'LANG=en_US.UTF-8'
+
+  - name: Remove unused packages
+    apt:
+      pkg: cloud-init
+      state: absent
+      purge: yes
+
+  - name: Remove cloud-init directories
+    file: 
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - /etc/cloud/
+      - /var/lib/cloud/
+      - /etc/init.d/change-host-name
+
+    #  - name: Preserve hostname after aws reboot
+#    replace:
+#      path: /etc/cloud/cloud.cfg
+#      regexp: '^preserve_hostname\:\sfalse'
+#      replace: 'preserve_hostname: true'
+#    ignore_errors: True
+
+#  - name: purpusefully end play
+#    meta: end_play
+
+  - name: Add myself to /etc/hostname
+    lineinfile:
+      dest: /etc/hostname
+      regexp: '^{{ansible_hostname}}$'
+      line: '{{inventory_hostname}}'
+
+  - name: Change the hostname to our standard
+    hostname:
+      name={{ inventory_hostname }}
+    when: ansible_hostname != inventory_hostname
+    register: reboot
+
+  - name: Set hostname
+    command: "hostnamectl set-hostname {{ inventory_hostname }}"
+    when: ansible_distribution_release == "xenial" and reboot is changed
+
+  - name: Fix /etc/hosts removing the old hostname
+    lineinfile:
+      state: present
+      dest: /etc/hosts
+      line: "{{ ansible_default_ipv4.address }} {{ inventory_hostname }} {{ ansible_hostname }}"
+      regexp: '^{{ ansible_default_ipv4.address }}'
+
+    # Example showing how to clear all existing facts of targetted hosts
+  - name: Clear gathered facts from all currently targeted hosts
+    meta: clear_facts
+
+  - name: refresh inventory
+    meta: refresh_inventory
+
+  - name: Set ansible_hostname fact
+    set_fact:
+      ansible_hostname: "{{ inventory_hostname }}"
+    when: reboot is changed
+
+  - name: Validate ansible_fqdn == inventory_hostname
+    assert:
+      that:
+        ansible_fqdn == inventory_hostname
+    when: ansible_fqdn is defined
+
+  - name: Remove apt lock file
+    file: path=/var/lib/dpkg/lock-frontend state=absent
+    changed_when: False
+
+  - name: Run timedatectl status
+    command: /usr/bin/timedatectl status
+    changed_when: False
+    check_mode: no
+    register: timedatectl_result
+
+  - name: Update /etc/timezone
+    template: src=etc/timezone.j2 dest=/etc/timezone owner=root group=root mode=0644
+    notify: update-timezone
+    when: "'Asia/Kolkata' not in timedatectl_result.stdout"
+    changed_when: False
+
+  - name: Update /etc/localtime
+    file:
+      src: /usr/share/zoneinfo/Asia/Kolkata
+      dest: /etc/localtime
+      owner: root
+      group: root
+      state: link
+    when: "'Asia/Kolkata' not in timedatectl_result.stdout"
+    notify: update-timezone
+    changed_when: False
+
+  - name: Update and upgrade apt packages
+    apt:
+      update_cache: yes
+      cache_valid_time: 86400 #One day
+    when: "'Asia/Kolkata' not in timedatectl_result.stdout"
+  
+# - name: Installing Basic Packages
+#    apt: name={{ packages }} state=present
+#    environment:
+#    - DEBIAN_FRONTEND: noninteractive
+
+  - name: Set the locale
+    command: locale-gen en_US.UTF-8
+    changed_when: False
+
+  - name: Configure tzdata
+    command: "dpkg-reconfigure -f noninteractive tzdata"
+    environment:
+    - DEBIAN_FRONTEND: noninteractive
+    when: "'Asia/Kolkata' not in timedatectl_result.stdout"
+    changed_when: False
+    
+  - name: update sysctl values
+    sysctl: name={{item.name}} value='{{item.value}}' state=present ignoreerrors=yes reload=yes
+    with_items:
+      - { name: 'kernel.sysrq', value: '1' }
+      - { name: 'fs.file-max', value: "{{ fs_file_max }}" }
+      - { name: 'vm.swappiness', value: '0' }  # from 60
+      - { name: 'vm.max_map_count', value: '262144' }
+#212992      - { name: 'net.core.rmem_default', value: '1048576' }
+#212992      - { name: 'net.core.rmem_max', value: '4194304' }
+#212992      - { name: 'net.core.wmem_default', value: '1048576' }
+#212992      - { name: 'net.core.wmem_max', value: '4194304' }
+#7200      - { name: 'net.ipv4.tcp_keepalive_time', value: "{{ common_tcp_keepalive_time }}" }
+#75      - { name: 'net.ipv4.tcp_keepalive_intvl', value: '5' }
+#9      - { name: 'net.ipv4.tcp_keepalive_probes', value: '6' }
+
+  - name: update security limits
+    lineinfile: dest=/etc/security/limits.conf insertafter='EOF' line='{{item}}'
+    with_items:
+      - "*       soft    memlock unlimited"
+      - "*       hard    memlock unlimited"
+      - "*       soft    nproc  65536"
+      - "*       hard    nproc  65536"
+      - "*       soft    nofile  65536"
+      - "*       hard    nofile  65536"
+    register: reboot
+ 
+  - name: setup ansible facts
+    file: path=/etc/ansible/facts.d owner=root group=root mode=0755 state=directory
+
+  - name: Check aws binary exists or not
+    stat:
+      path: "/usr/local/bin/aws"
+    register: aws_result
+
+    #  - name: Create a symbolic link
+    #file:
+    #  src: /usr/bin/aws
+    #  dest: /usr/local/bin/aws
+    #  owner: root
+    #  group: root
+    #  state: link
+    #when: aws_result.stat.exists == False
+
+  - name: create /opt/backup directory
+    file:
+      path: "/opt/backup"
+      state: directory
+      owner: "{{ ansible_user }}"
+      group: "{{ ansible_user }}"
+      mode: '0777'
+      
+#  - name: purpusefully end play
+#    meta: end_play
+
+#  - name: Mount EFS on /opt/backup
+#    mount:
+#      path: "/opt/backup"
+#      src: "{{ mount_src }}:/"
+#      fstype: nfs4
+#      opts: nfsvers=4.1
+#      state: mounted
+#    when: env is defined and env=="prod"
+
+  - name: Setup sudoers
+    template: src=etc/sudoers.j2 dest=/etc/sudoers owner=root group=root mode=0440 validate='/usr/sbin/visudo -cf %s'
+
+  - name: Reboot a slow machine that might have lots of updates to apply
+    reboot:
+      reboot_timeout: 360 
+    when: reboot is changed
+
+  tags: common

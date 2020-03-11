@@ -1,0 +1,5 @@
+---
+dependencies:
+  - { role: sshd, tags: common }
+  - { role: logrotate, tags: common }
+#  - { role: sudoers, when: common_legacy_sudoers == false, tags: common }

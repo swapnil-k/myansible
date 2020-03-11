@@ -3,3 +3,5 @@ localhost
 [ansibleclient]
 ansibleclient1 ansible_host=ansibleclient1
 ansibleclient2 ansible_host=ansibleclient2
+ansibleclient3 ansible_host=192.168.0.107 ansible_ssh_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa_sysadmin
+ansibleclient4 ansible_host=192.168.43.93 ansible_ssh_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa_sysadmin
