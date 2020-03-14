@@ -1,0 +1,34 @@
+---
+
+packages:
+  - apt-utils
+  - apt-file
+  - tzdata
+  - locales
+  - vim
+  - software-properties-common
+  - aptitude
+  - telnet
+  - net-tools
+  - dnsutils
+  - curl
+  - inetutils-ping
+  - tree
+  - liblocal-lib-perl
+  - libdatetime-perl
+  - libwww-perl
+  - awscli
+  - bash-completion
+  - unzip
+  - nfs-common
+  - ncdu
+  - atop
+  - htop
+
+common_directories: /var/log/messages
+sys_timezone: Asia/Kolkata
+common_iptables_enabled: true
+common_legacy_sudoers: false
+common_tcp_keepalive_time: 60
+fs_file_max: 70000
+mount_src: fs-16bd55c7.efs.ap-south-1.amazonaws.com
